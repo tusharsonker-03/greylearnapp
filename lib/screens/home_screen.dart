@@ -139,39 +139,24 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // ✅ Subscription popup -> ONLY IF LOGGED IN (ANDROID ONLY)
-    if (!Platform.isIOS && (configData.subscription?.popup ?? false)) {
-      final loggedIn = await _isLoggedIn();
-      if (loggedIn) {
-        int delay =
-        int.parse(configData.subscription?.popupshowduration ?? "0");
-        await Future.delayed(Duration(seconds: delay));
-        if (mounted) SubscriptionDialog.show(context, configData.subscription!);
-      } else {
-        debugPrint("🔐 Skip subscription popup: user not logged in");
-      }
-    } else {
-      if (Platform.isIOS) {
-        debugPrint("🍎 iOS detected → subscription popup disabled");
-      }
-    }
-
-    // // ✅ Subscription popup -> ONLY IF LOGGED IN
-    // if (configData.subscription?.popup ?? false) {
-    //   final loggedIn = await _isLoggedIn();           // ⬅️ add
-    //   if (loggedIn) {                                  // ⬅️ add
-    //     int delay = int.parse(configData.subscription?.popupshowduration ?? "0");
+    ////10 min
+    // if (!Platform.isIOS && (configData.subscription?.popup ?? false)) {
+    //   final loggedIn = await _isLoggedIn();
+    //   if (loggedIn) {
+    //     int delay =
+    //     int.parse(configData.subscription?.popupshowduration ?? "0");
     //     await Future.delayed(Duration(seconds: delay));
     //     if (mounted) SubscriptionDialog.show(context, configData.subscription!);
     //   } else {
     //     debugPrint("🔐 Skip subscription popup: user not logged in");
     //   }
+    // } else {
+    //   if (Platform.isIOS) {
+    //     debugPrint("🍎 iOS detected → subscription popup disabled");
+    //   }
     // }
-    //
-    // if (configData.subscription?.popup ?? false) {
-    //   int delay = int.parse(configData.subscription?.popupshowduration ?? "0");
-    //   await Future.delayed(Duration(seconds: delay));
-    //   if (mounted) SubscriptionDialog.show(context, configData.subscription!);
-    // }
+// 10 min
+
   }
 
   /// verion 1.2.3
@@ -224,18 +209,20 @@ class _HomeScreenState extends State<HomeScreen> {
         await Future.delayed(const Duration(minutes: 3));
         if (mounted) showMaintenancePopup();
       } else {
-        // ✅ normal flow -> subscription popup (ANDROID ONLY)
-        if (!Platform.isIOS && (configData.subscription?.popup ?? false)) {
-          await Future.delayed(Duration(
-            seconds:
-            int.parse(configData.subscription?.popupshowduration ?? "0"),
-          ));
-          if (mounted) {
-            SubscriptionDialog.show(context, configData.subscription!);
-          }
-        } else if (Platform.isIOS) {
-          debugPrint("🍎 iOS: subscription popup suppressed");
-        }
+        //10 min
+        // // ✅ normal flow -> subscription popup (ANDROID ONLY)
+        // if (!Platform.isIOS && (configData.subscription?.popup ?? false)) {
+        //   await Future.delayed(Duration(
+        //     seconds:
+        //     int.parse(configData.subscription?.popupshowduration ?? "0"),
+        //   ));
+        //   if (mounted) {
+        //     SubscriptionDialog.show(context, configData.subscription!);
+        //   }
+        // } else if (Platform.isIOS) {
+        //   debugPrint("🍎 iOS: subscription popup suppressed");
+        // }
+        //10min
       }
     }
   }
@@ -280,16 +267,19 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint("✅ App up to date hai ($currentVersion)");
     } else {
       // app naya ya barabar hai => subscription popup (ANDROID ONLY)
-      if (!Platform.isIOS && (configData.subscription?.popup ?? false)) {
-        await Future.delayed(Duration(
-            seconds:
-            int.parse(configData.subscription?.popupshowduration ?? "0")));
-        if (mounted) {
-          SubscriptionDialog.show(context, configData.subscription!);
-        }
-      } else if (Platform.isIOS) {
-        debugPrint("🍎 iOS: subscription popup suppressed");
-      }
+      // 🔴 HOME SCREEN SE SUBSCRIPTION POPUP DISABLE KAR DIYA
+// 10 min
+      // if (!Platform.isIOS && (configData.subscription?.popup ?? false)) {
+      //   await Future.delayed(Duration(
+      //       seconds:
+      //       int.parse(configData.subscription?.popupshowduration ?? "0")));
+      //   if (mounted) {
+      //     SubscriptionDialog.show(context, configData.subscription!);
+      //   }
+      // } else if (Platform.isIOS) {
+      //   debugPrint("🍎 iOS: subscription popup suppressed");
+      // }
+      //10 min
     }
   }
   //     // app naya ya barabar hai => subscription popup check

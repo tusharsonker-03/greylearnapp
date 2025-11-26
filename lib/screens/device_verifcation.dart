@@ -134,7 +134,6 @@ class _DeviceVerificationScreenState extends State<DeviceVerificationScreen> {
     _stayOnce = List<int>.filled(6, 0); // NEW
     _lastTapped = -1; // 👈 NEW
     _startResendCooldown(60);
-
   }
 
   Future<void> _submit() async {
@@ -465,7 +464,8 @@ class _DeviceVerificationScreenState extends State<DeviceVerificationScreen> {
                         ),
                         const SizedBox(height: 40),
                         SizedBox(
-                          width: double.infinity, // full width so text wrap ho jayega
+                          width: double
+                              .infinity, // full width so text wrap ho jayega
                           child: RichText(
                             textAlign: TextAlign.center,
                             text: TextSpan(
@@ -478,9 +478,10 @@ class _DeviceVerificationScreenState extends State<DeviceVerificationScreen> {
                               children: [
                                 TextSpan(
                                   text: (_email != null && _email!.isNotEmpty)
-                                      ?  _maskEmail(_email!)
+                                      ? _maskEmail(_email!)
                                       : 'your email',
-                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),
@@ -870,7 +871,7 @@ class _DeviceVerificationScreenState extends State<DeviceVerificationScreen> {
                               ))
                             : (_resendCooldown > 0)
                                 ? Text(
-                                    'Resend in 00:${_resendCooldown.toString().padLeft(2, '0')}',
+                                    'Resend (${_resendCooldown}s)',
                                     style: const TextStyle(color: Colors.grey),
                                   )
                                 : TextButton(
@@ -992,7 +993,10 @@ class _DeviceVerificationScreenState extends State<DeviceVerificationScreen> {
     _resendTimer?.cancel();
     setState(() => _resendCooldown = seconds);
     _resendTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
       if (_resendCooldown <= 1) {
         t.cancel();
         setState(() => _resendCooldown = 0);

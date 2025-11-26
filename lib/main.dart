@@ -29,7 +29,9 @@ import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:logging/logging.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'Utils/androidrating.dart';
 import 'Utils/base_url_global_helper.dart';
 import 'Utils/deeplink_service.dart';
 import 'Utils/link_navigator.dart';
@@ -158,7 +160,26 @@ const AndroidNotificationChannel _notifChannel = AndroidNotificationChannel(
 );
 
 
-Future<void> routeFromNotificationData(BuildContext? ctx, Map<String, dynamic> data) async {
+Future<void> logoutIfAppUpdated() async {
+  final prefsHelper = SharedPreferenceHelper();
+  final packageInfo = await PackageInfo.fromPlatform();
+  final currentVersion = packageInfo.version.trim();
+  final cachedVersion = (await prefsHelper.getAppVersion())?.trim();
+
+  if (cachedVersion != null && cachedVersion.isNotEmpty &&
+      cachedVersion != currentVersion) {
+    debugPrint('🚪 [VERSION] App updated ($cachedVersion -> $currentVersion), clearing auth');
+    await prefsHelper.clearAuthPreserveConfig();
+  }
+
+  await prefsHelper.setAppVersion(currentVersion);
+}
+
+Future<void> routeFromNotificationData(
+    BuildContext? ctx,
+    Map<String, dynamic> data,
+    ) async {
+  // 🔁 Context null ho to thoda delay karke phir se try karo
   if (ctx == null) {
     debugPrint('⚠️ [ROUTE] context=null, will retry in 300ms');
     Future.delayed(const Duration(milliseconds: 300), () {
@@ -169,31 +190,109 @@ Future<void> routeFromNotificationData(BuildContext? ctx, Map<String, dynamic> d
 
   debugPrint('➡️ [ROUTE] raw data: $data');
 
-  // normalize
-  final redirectType    = (data['redirect_type'] ?? '').toString().trim().toLowerCase();
-  final redirectSection = (data['redirect_section'] ?? '').toString().trim(); // keep original case for LinkNavigator
-  final redirectIdOrUrl = (data['redirect_id_or_url'] ?? '').toString().trim();
-  final authentication  = (data['authentication'] ?? '').toString().trim();
+  // 🔹 normalize
+  final redirectType =
+  (data['redirect_type'] ?? '').toString().trim().toLowerCase();
+  final redirectSection =
+  (data['redirect_section'] ?? '').toString().trim(); // original case
+  final redirectIdOrUrl =
+  (data['redirect_id_or_url'] ?? '').toString().trim();
+  final authentication =
+  (data['authentication'] ?? '').toString().trim();
 
-  debugPrint('🔎 [ROUTE] type="$redirectType" section="$redirectSection" id/url="$redirectIdOrUrl" auth="$authentication"');
+  debugPrint(
+    '🔎 [ROUTE] type="$redirectType" section="$redirectSection" '
+        'id/url="$redirectIdOrUrl" auth="$authentication"',
+  );
 
-  // auth
+  // 🔐 auth
   final token = await SharedPreferenceHelper().getAuthToken() ?? '';
-  final needAuth = authentication.toLowerCase() == 'true' || authentication == '1';
-  debugPrint('🔐 [ROUTE] needAuth=$needAuth tokenPresent=${token.isNotEmpty}');
+  final needAuth =
+      authentication.toLowerCase() == 'true' || authentication == '1';
+  debugPrint(
+    '🔐 [ROUTE] needAuth=$needAuth tokenPresent=${token.isNotEmpty}',
+  );
 
   if (needAuth && token.isEmpty) {
     debugPrint('🚫 [ROUTE] auth needed but no token -> LoginScreen');
-    Navigator.of(ctx).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+    Navigator.of(ctx).pushReplacement(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
     return;
   }
 
-  // ✅ NEW: sirf jab section bhi empty ho AUR url/id bhi empty ho, tab NotificationScreen
+  // 1️⃣ Special case: Android rating popup (terminated / background se)
+  if (redirectType == 'in-app' &&
+      redirectSection.toLowerCase() == 'androidratingpopup') {
+    debugPrint('⭐ [ROUTE] androidratingpopup -> Home + Rating Popup');
+
+    // Pehle pura stack clear karke HOME pe le jao
+    Navigator.of(ctx).pushNamedAndRemoveUntil(
+      TabsScreen.routeName,
+          (route) => false,
+      arguments: {'index': 0}, // Home tab
+    );
+
+    // Phir next microtask me popup dikhao (ab base route = Home)
+    Future.microtask(() {
+      final dialogCtx = navigatorKey.currentContext; // global navigatorKey
+      if (dialogCtx != null) {
+        AndroidRatingPopup.show(dialogCtx);
+      } else {
+        debugPrint(
+          '⚠️ [ROUTE] rating popup: navigatorKey.currentContext is null',
+        );
+
+      }
+    });
+
+    return; // yahin finish, LinkNavigator ko mat bhejo
+  }
+
+  // 2️⃣ Special case: Subscription bundle popup
+  if (redirectType == 'in-app' &&
+      redirectSection.toLowerCase() == 'subscriptionbundlepopup') {
+    debugPrint('💳 [ROUTE] subscriptionbundlepopup -> Home + Subscription Popup');
+
+    // Pehle HOME pe le jao
+    Navigator.of(ctx).pushNamedAndRemoveUntil(
+      TabsScreen.routeName,
+          (route) => false,
+      arguments: {'index': 0},
+    );
+
+    // Ab Home context se hi LinkNavigator ko bulao, jo SubscriptionDialog.show karega
+    Future.microtask(() async {
+      final navCtx = navigatorKey.currentContext;
+      if (navCtx == null) {
+        debugPrint(
+          '⚠️ [ROUTE] subscriptionpopup: navigatorKey.currentContext is null',
+        );
+        return;
+      }
+
+      // same navigateFromNotification flow, lekin ab base route Home hai
+      LinkNavigator.instance.navigateFromNotification(
+        navCtx,
+        redirectType,
+        redirectSection,
+        redirectIdOrUrl,
+        authentication,
+        token,
+      );
+    });
+
+    return;
+  }
+
+  // ✅ Sirf jab section bhi empty ho AUR url/id bhi empty ho, tab NotificationScreen
   final isSectionEmpty = redirectSection.isEmpty;
   final isIdOrUrlEmpty = redirectIdOrUrl.isEmpty;
 
   if (isSectionEmpty && isIdOrUrlEmpty) {
-    debugPrint('⚠️ [ROUTE] both section & id/url empty -> NotificationScreen');
+    debugPrint(
+      '⚠️ [ROUTE] both section & id/url empty -> NotificationScreen',
+    );
     Navigator.of(ctx).pushNamed(NotificationScreen.routeName);
     return;
   }
@@ -211,7 +310,6 @@ Future<void> routeFromNotificationData(BuildContext? ctx, Map<String, dynamic> d
   );
 }
 
-
 // Future<void> routeFromNotificationData(BuildContext? ctx, Map<String, dynamic> data) async {
 //   if (ctx == null) {
 //     debugPrint('⚠️ [ROUTE] context=null, will retry in 300ms');
@@ -220,30 +318,27 @@ Future<void> routeFromNotificationData(BuildContext? ctx, Map<String, dynamic> d
 //     });
 //     return;
 //   }
+//
 //   debugPrint('➡️ [ROUTE] raw data: $data');
-//   // FCM data may come as String values; normalize
-//   String redirectType      = (data['redirect_type'] ?? '').toString();
-//   String redirectSection   = (data['redirect_section'] ?? '').toString();
-//   String redirectIdOrUrl   = (data['redirect_id_or_url'] ?? '').toString();
-//   String authentication    = (data['authentication'] ?? '').toString();
+//
+//   // normalize
+//   final redirectType    = (data['redirect_type'] ?? '').toString().trim().toLowerCase();
+//   final redirectSection = (data['redirect_section'] ?? '').toString().trim(); // keep original case for LinkNavigator
+//   final redirectIdOrUrl = (data['redirect_id_or_url'] ?? '').toString().trim();
+//   final authentication  = (data['authentication'] ?? '').toString().trim();
 //
 //   debugPrint('🔎 [ROUTE] type="$redirectType" section="$redirectSection" id/url="$redirectIdOrUrl" auth="$authentication"');
 //
-//
-//   // auth token (if needed)
+//   // auth
 //   final token = await SharedPreferenceHelper().getAuthToken() ?? '';
-//
-//   // in-app + auth required but no token => login
-//   final needAuth = authentication.trim().toLowerCase() == 'true' || authentication.trim() == '1';
+//   final needAuth = authentication.toLowerCase() == 'true' || authentication == '1';
 //   debugPrint('🔐 [ROUTE] needAuth=$needAuth tokenPresent=${token.isNotEmpty}');
 //
 //   if (needAuth && token.isEmpty) {
 //     debugPrint('🚫 [ROUTE] auth needed but no token -> LoginScreen');
-//
 //     Navigator.of(ctx).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
 //     return;
 //   }
-//
 //
 //   // ✅ NEW: sirf jab section bhi empty ho AUR url/id bhi empty ho, tab NotificationScreen
 //   final isSectionEmpty = redirectSection.isEmpty;
@@ -257,7 +352,7 @@ Future<void> routeFromNotificationData(BuildContext? ctx, Map<String, dynamic> d
 //
 //   debugPrint('🚀 [ROUTE] forwarding to LinkNavigator…');
 //
-//   // delegate to LinkNavigator (central place)
+//   // proceed (web case me section empty ho sakta hai but id/url present)
 //   LinkNavigator.instance.navigateFromNotification(
 //     ctx,
 //     redirectType,
@@ -267,6 +362,7 @@ Future<void> routeFromNotificationData(BuildContext? ctx, Map<String, dynamic> d
 //     token,
 //   );
 // }
+
 
 
 void main() async {
@@ -280,6 +376,8 @@ void main() async {
     await _requestStoragePermission();
   }
 
+
+  await logoutIfAppUpdated();
 
 
   await NotificationService().init();// custom service we'll define below

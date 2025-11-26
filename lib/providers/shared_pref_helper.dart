@@ -5,7 +5,8 @@ class SharedPreferenceHelper {
   Future<bool> setAuthToken(String token) async {
     final pref = await SharedPreferences.getInstance();
     final ok = await pref.setString(userPref.AuthToken.toString(), token);
-    print('💾 [Prefs] setAuthToken -> ${token.isEmpty ? "(empty)" : token.substring(0, 30) + "..."} (ok=$ok)');
+    print(
+        '💾 [Prefs] setAuthToken -> ${token.isEmpty ? "(empty)" : token.substring(0, 30) + "..."} (ok=$ok)');
 
     return pref.setString(userPref.AuthToken.toString(), token);
   }
@@ -16,7 +17,6 @@ class SharedPreferenceHelper {
     print('📦 [Prefs] getAuthToken -> ${_mask(t)} (ok=$t)');
     return pref.getString(userPref.AuthToken.toString());
   }
-
 
   // // ====== DV TOKEN (separate key) ======
   // Future<bool> setDVToken(String token) async {
@@ -40,10 +40,10 @@ class SharedPreferenceHelper {
 // (private) small masker for safe logging
   String _mask(String? t) {
     if (t == null || t.isEmpty) return '(empty)';
-    if (t.length <= 10) return '${t.substring(0, 2)}***${t.substring(t.length - 2)}';
+    if (t.length <= 10)
+      return '${t.substring(0, 2)}***${t.substring(t.length - 2)}';
     return '${t.substring(0, 6)}***${t.substring(t.length - 4)}';
   }
-
 
   Future<bool> setFCMToken(String token) async {
     final pref = await SharedPreferences.getInstance();
@@ -84,6 +84,7 @@ class SharedPreferenceHelper {
     final pref = await SharedPreferences.getInstance();
     return pref.getString(userPref.ConfigData.toString());
   }
+
   Future<bool> setUserImage(String image) async {
     final pref = await SharedPreferences.getInstance();
     return pref.setString(userPref.Image.toString(), image);
@@ -92,6 +93,27 @@ class SharedPreferenceHelper {
   Future<String?> getUserImage() async {
     final pref = await SharedPreferences.getInstance();
     return pref.getString(userPref.Image.toString());
+  }
+
+  Future<bool> setAppVersion(String version) async {
+    final pref = await SharedPreferences.getInstance();
+    return pref.setString('app_version', version);
+  }
+
+  Future<String?> getAppVersion() async {
+    final pref = await SharedPreferences.getInstance();
+    return pref.getString('app_version');
+  }
+
+  Future<void> clearAuthPreserveConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedConfig = prefs.getString(userPref.ConfigData.toString());
+
+    await prefs.clear();
+
+    if (cachedConfig != null) {
+      await prefs.setString(userPref.ConfigData.toString(), cachedConfig);
+    }
   }
 }
 
@@ -109,5 +131,4 @@ enum userPref {
   ConfigData,
   FCMToken,
   // DVToken,
-
 }

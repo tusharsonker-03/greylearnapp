@@ -82,7 +82,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
             "You have already signed up. Please check your inbox to verify your email address") {
           Navigator.of(context).pushNamed(
             VerificationScreen.routeName,
-            arguments: _emailController.text,
+            arguments: {
+              'email': _emailController.text,
+              'password': _passwordController.text, // 👈 add this
+            },
           );
           CommonFunctions.showSuccessToast(user.message.toString());
         }
@@ -90,7 +93,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
         else {
           Navigator.of(context).pushNamed(
             VerificationScreen.routeName,
-            arguments: _emailController.text,
+            arguments: {
+              'email': _emailController.text,
+              'password': _passwordController.text, // 👈 add this
+            },
+            // arguments: _emailController.text,
           );
           CommonFunctions.showSuccessToast(user.message.toString());
         }

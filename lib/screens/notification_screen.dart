@@ -116,15 +116,23 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                   Icons.check_box,
                                   color: Colors.green,
                                 ),
-                                Padding(
-                                  padding: const EdgeInsets.all(2.0),
+                                const SizedBox(width: 4),
+                                // 👇 Yahan se change
+                                Expanded(
                                   child: Text(
                                     notificationList[index].title ?? "",
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 2,                   // 1 line tak hi
+                                    overflow: TextOverflow.ellipsis, // aage ... aa jayega
+                                    softWrap: false,
                                   ),
-                                )
+                                ),
                               ],
                             ),
+
 
                             // ListTile(
                             //   leading: const Icon(

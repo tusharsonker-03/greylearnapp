@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:academy_app/Utils/subscription_popup.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api_client.dart';
 import '../constants.dart';
+import '../models/config_data.dart';
 import '../providers/courses.dart';
 import '../providers/my_courses.dart';
 import '../providers/shared_pref_helper.dart';
@@ -20,6 +23,7 @@ import '../screens/my_courses_screen.dart';
 import '../screens/newcoursedetail_landing_page.dart';
 import '../screens/notification_screen.dart';
 import '../screens/tabs_screen.dart';
+import 'androidrating.dart';
 import 'navigation_service.dart';
 
 /// A singleton service to handle dynamic navigation for any named link field.
@@ -161,22 +165,6 @@ class LinkNavigator {
           arguments: numericCourseId, // just the int id
         );
 
-        // Navigator.of(context).push(
-        //   MaterialPageRoute(
-        //     settings: RouteSettings(
-        //       name: '/course-details-dl',
-        //       arguments: {
-        //         'id': numericCourseId,
-        //         'course_id': numericCourseId,
-        //         'prefetch': courseJson,
-        //       },
-        //     ),
-        //     builder: (_) => CourseDetailScreenDL(
-        //       courseId: numericCourseId,
-        //       prefetch: courseJson,
-        //     ),
-        //   ),
-        // );
       } catch (e) {
         debugPrint('❌ [LN] prefetch course JSON failed: $e');
 
@@ -302,6 +290,36 @@ class LinkNavigator {
         return;
       }
 
+      if (section == 'subscriptionbundlepopup') {
+        if (Platform.isIOS) {
+          debugPrint('🍎 iOS detected → subscription popup disabled');
+          return;
+        }
+
+        try {
+          final rawConfig = await SharedPreferenceHelper().getConfigData();
+          if (rawConfig == null || rawConfig.isEmpty) {
+            debugPrint('[LinkNavigator] No cached config found for subscription popup');
+            return;
+          }
+
+          final parsed = jsonDecode(rawConfig);
+          final configData = ConfigData.fromJson(parsed);
+          final subscription = configData.subscription;
+
+          if (subscription == null) {
+            debugPrint('[LinkNavigator] Subscription config missing; cannot show popup');
+            return;
+          }
+
+          SubscriptionDialog.show(context, subscription);
+        } catch (e) {
+          debugPrint('[LinkNavigator] Failed to open subscription popup: $e');
+        }
+        return;
+      }
+
+
       if (section == 'account') {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => TabsScreen(index: 3)),
@@ -309,18 +327,22 @@ class LinkNavigator {
         return;
       }
 
-      // 🔧 examples (add as per your app):
-      // if (section == 'course_detail') {
-      //   final courseId = int.tryParse(idOrUrl);
-      //   if (courseId != null) {
-      //     NavigationService().navigationTo(context, CourseDetailScreen.routeName,
-      //         arguments: courseId);
-      //   }
-      //   return;
-      // }
+
+      if (section == 'androidratingpopup') {
+        debugPrint('🧭 [LN] OPEN -> Android App Rating Popup');
+        AndroidRatingPopup.show(context);   // Dialog open karega
+        return;
+      }
+
+
 
       // Fallback:
       debugPrint('[LinkNavigator] Unknown in-app section: $section');
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        TabsScreen.routeName,
+            (route) => false,
+        arguments: {'index': 0},
+      );
       return;
     }
 
@@ -375,6 +397,11 @@ class LinkNavigator {
     }
 
     debugPrint('[LinkNavigator] Unknown redirectType: $redirectType');
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      TabsScreen.routeName,
+          (route) => false,
+      arguments: {'index': 0},
+    );
   }
 
 // void navigateFromNotification(
